@@ -578,7 +578,8 @@ int padding(BYTE *Y, BYTE *A, int C_size, int A_size){ //
 
 int main(int argc, char *argv[]) {
 	//feedfacedeadbeeffeedfacedeadbeefabaddad2
-	BYTE * X; BYTE * Y; BYTE *m = 0; BYTE *m1 = 0; BYTE *A = 0; BYTE *T = 0; BYTE *P = 0;
+	//42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985
+	BYTE * X; BYTE * Y; BYTE *C = 0; BYTE *C1 = 0; BYTE *A = 0; BYTE *T = 0; BYTE *T1 = 0; BYTE *P = 0;
 	char *tamp = 0, *tamp1 = 0, *tamp2 = 0,*tamp3=0, ch;
 	int n, length = 0, hexlen, nowlen = 0, A_len = 0, A_hexlen = 0, iv_len = 0, iv_hexlen = 0, T_len = 0, T_hexlen = 0;
 	int len;
@@ -586,10 +587,11 @@ int main(int argc, char *argv[]) {
 	//======================================>>>>>>>>>>>>>IV<<<<<<<<<<<<<==========================================================
 	//cafebabefacedbaddecaf888
 	//cafebabefacedbad
+	//4d5c2af327cd64a62cf35abd2ba6fab4
 	BYTE *IV = 0;
 	//======================================>>>>>>>>>>>>>KEY<<<<<<<<<<<<==========================================================
-	BYTE key[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };//1
-	//BYTE key[16] = { 0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c, 0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08 };//2
+	//BYTE key[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };//1
+	BYTE key[16] = { 0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c, 0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08 };//2
 	BYTE ekey[4 * 44] = { 0, };
 	clock_t time;
 	//=================================================
@@ -602,8 +604,8 @@ int main(int argc, char *argv[]) {
 		tamp[length] = ch;
 		length++;
 	}
-	m = (BYTE *)realloc(tamp, sizeof(BYTE)*(length + 1));
-	str2hex(tamp, m, length);
+	C = (BYTE *)realloc(tamp, sizeof(BYTE)*(length + 1));
+	str2hex(tamp, C, length);
 	hexlen = length / 2;
 	n = makeN(length);
 	fflush(stdin);
@@ -622,6 +624,8 @@ int main(int argc, char *argv[]) {
 	str2hex(tamp1, A, A_len);
 	A_hexlen = A_len / 2;
 	printf("\n");
+	if (A_len == 0)
+		A = NULL;
 	//=================================================
 	printf("Insert IV\n");
 	while ((ch = getchar()) != '\n')
@@ -655,20 +659,30 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	//=================================================
-	Y = (BYTE *)realloc(tamp, sizeof(BYTE)*length + A_len + 1);
-	X = (BYTE *)realloc(tamp1, sizeof(BYTE)*length + A_len + 1);
-	P = (BYTE *)realloc(tamp1, sizeof(BYTE)*length + A_len + 1);
-	//time = clock();
+	T1 = (BYTE *)malloc(sizeof(BYTE)*(T_len + 1));
+	C1 = (BYTE *)malloc(sizeof(BYTE)*length + A_len + 1);
+	Y = (BYTE *)malloc(sizeof(BYTE)*length + A_len + 1);
+	X = (BYTE *)malloc(sizeof(BYTE)*length + A_len + 1);
+	P = (BYTE *)malloc(sizeof(BYTE)*length + A_len + 1);
 	//========================================================
+	memset(T1, 0, T_len + 1);
+	memset(C1, 0, length + A_len + 1);
+	//===================================================
+	//time = clock();
 	KeyExpansion(key, ekey);
 	gerJ0(IV, J0, ekey, iv_hexlen);   //IV -> J0
 	cpystr(ICB, J0, 16);  // ICB = J0 카피함
-	GCTR(hexlen, n, m, Y, ICB, ekey, 0); // GCTR돌림 output 
+
+	GCTR(hexlen, n, C, Y, ICB, ekey, 0); // GCTR돌림 output 
 	cpystr(P, Y, hexlen);  // GCTR을 돌려 나온 Plaintext Y를 P에 카피
-	len = padding(m, A, hexlen, A_hexlen);
-	GHASH(len, m, X, ekey);
-	GCTR(16, 1, X, Y, J0, ekey, 1); // GCTR돌림 output Y]
-	if (cmpArr(T,Y, TAGLEN)){
+	cpystr(C1, C, 16);  // ICB = J0 카피함
+	len = padding(C1, A, hexlen, A_hexlen);  //C , A 이용하여 패딩
+	GHASH(len, C1, X, ekey); // 패딩해서 GHASH돌려서 
+	GCTR(16, 1, X, Y, J0, ekey, 1); // GCTR돌림 output Y가 Tag
+	cpystr(T1, Y, 16);  // ICB = J0 카피함
+	printArr(T, 16);
+	printArr(T1, 16);
+	if (cmpArr(T,T1, TAGLEN)){
 		printf("Output P : \n");
 		printArr(P, hexlen);
 	}
@@ -684,5 +698,5 @@ int main(int argc, char *argv[]) {
 }
 /*
 160930
-m 제대로 안들어감
+ case1 , case2 확인
 */
