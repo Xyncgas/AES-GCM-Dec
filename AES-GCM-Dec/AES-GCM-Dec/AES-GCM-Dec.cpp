@@ -672,16 +672,13 @@ int main(int argc, char *argv[]) {
 	KeyExpansion(key, ekey);
 	gerJ0(IV, J0, ekey, iv_hexlen);   //IV -> J0
 	cpystr(ICB, J0, 16);  // ICB = J0 카피함
-
 	GCTR(hexlen, n, C, Y, ICB, ekey, 0); // GCTR돌림 output 
 	cpystr(P, Y, hexlen);  // GCTR을 돌려 나온 Plaintext Y를 P에 카피
-	cpystr(C1, C, 16);  // ICB = J0 카피함
+	cpystr(C1, C, hexlen);  // ICB = J0 카피함
 	len = padding(C1, A, hexlen, A_hexlen);  //C , A 이용하여 패딩
 	GHASH(len, C1, X, ekey); // 패딩해서 GHASH돌려서 
 	GCTR(16, 1, X, Y, J0, ekey, 1); // GCTR돌림 output Y가 Tag
 	cpystr(T1, Y, 16);  // ICB = J0 카피함
-	printArr(T, 16);
-	printArr(T1, 16);
 	if (cmpArr(T,T1, TAGLEN)){
 		printf("Output P : \n");
 		printArr(P, hexlen);
